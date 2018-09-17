@@ -96,14 +96,15 @@ class AIPlayer(Player):
     # Return: The Move to be made
     ##
     def getMove(self, currentState):
+
         moves = listAllLegalMoves(currentState)
-        selectedMove = moves[random.randint(0, len(moves) - 1)];
+        selectedMove = moves[random.randint(0, len(moves) - 1)]
 
         # don't do a build move if there are already 3+ ants
         numAnts = len(currentState.inventories[currentState.whoseTurn].ants)
         while (selectedMove.moveType == BUILD and numAnts >= 3):
-            selectedMove = moves[random.randint(0, len(moves) - 1)];
-
+            selectedMove = moves[random.randint(0, len(moves) - 1)]
+        self.calculateStateScore(currentState)
         return selectedMove
 
     ##
@@ -139,13 +140,65 @@ class AIPlayer(Player):
 
     def calculateStateScore(self, currentState):
         rtrnNumber = 0.0
-        rtrnNumber = rtrnNumber + self.hasPlaerWon(self, currentState)
-        rtrnNumber = rtrnNumber + self.numOfAnts(self, currentState)
-        rtrnNumber = rtrnNumber + self.numOfFood(self, currentState)
+        rtrnNumber = \
+            self.hasPlaerWon(currentState) + \
+            self.numOfAnts(currentState) + \
+            self.numOfFood(currentState) + \
+            self.myQueeenThreat(currentState) + \
+            self.enemyQueenThreat(currentState)
+        print(rtrnNumber)
+        return rtrnNumber
+
+    ##
+    # If there is enemy ants close to my queen
+    #
+    def myQueeenThreat(self, currentState):
+        myID = currentState.whoseTurn
+        enemyID = 1 - myID
+
+        myInv = currentState.inventories[myID]
+        enemyInv = currentState.inventories[enemyID]
+
+        queenCords = myInv.getQueen().coords
+        enemyAnts = enemyInv.ants
+        closestAnt = None
+        for ant in enemyAnts:
+            if ant.type != WORKER or QUEEN:
+                if closestAnt is None:
+                    closestAnt = ant
+
+                if approxDist(ant.coords, queenCords) < approxDist(closestAnt.coords, queenCords):
+                    closestAnt = ant
+        if closestAnt is None:
+            rtrnNumber = 0
+        else:
+            rtrnNumber = -0.1/approxDist(closestAnt.coords, queenCords)
+
+        return rtrnNumber
+
+    ##
+    # If one of my ants is close to the enemy queen
+    #
+    def enemyQueenThreat(self, currentState):
+        myID = currentState.whoseTurn
+        enemyID = 1 - myID
+
+        myInv = currentState.inventories[myID]
+        enemyInv = currentState.inventories[enemyID]
+
+        enemyQueenCords = enemyInv.getQueen().coords
+        myAnts = myInv.ants
+        closestAnt = myAnts[0]
+        for ant in myAnts:
+            if ant.type != WORKER or QUEEN:
+                if approxDist(ant.coords, enemyQueenCords) < approxDist(closestAnt.coords, enemyQueenCords):
+                    closestAnt = ant
+
+        rtrnNumber = 0.1 / approxDist(closestAnt.coords, enemyQueenCords)
         return rtrnNumber
 
     def hasPlaerWon(self, currentState):
-        if getWinner(currentState) == None:
+        if getWinner(currentState) is None:
             return 0.0
         elif getWinner(currentState) == 1:
             return 1.0
@@ -155,13 +208,20 @@ class AIPlayer(Player):
     def numOfAnts(self, currentState):
         myInv = currentState.inventories[self.playerId]
         myAnts = myInv.ants
-        rtrnNumber = len(myAnts)*0.01
+
+        enemyInv = getEnemyInv(self, currentState)
+        enemyAnts = enemyInv.ants
+
+        difference = len(myAnts) - len(enemyAnts)
+        rtrnNumber = difference * 0.05
         return rtrnNumber
 
     def numOfFood(self, currentState):
-        myInv = currentState.inventories[self.playerId]
-        numFood = myInv.foodCount
-        rtrnNumber = numFood * 0.05
+        enemyFood = getEnemyInv(self, currentState).foodCount
+        myFood = len(getCurrPlayerFood(self, currentState))
+
+        difference = (myFood - enemyFood)
+        rtrnNumber = difference * 0.05
         return rtrnNumber
 
 

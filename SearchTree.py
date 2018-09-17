@@ -1,6 +1,8 @@
 
 class SearchTree:
 
+    root = [{"Root Node": []}]
+
     stateNode = [
         {"Data": [
             "currentState",
@@ -18,6 +20,14 @@ class SearchTree:
     def __init__(self):
         self.nodes = []
         self.top = None
+        self.size = 0
+        self.depth = 0
+
+    def __len__(self):
+        return self.size
+
+    def length(self):
+        return self.size
 
     def insert(self, node, currentState):
         if self.top == None:
