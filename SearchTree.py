@@ -22,6 +22,7 @@ class SearchTree:
         self.top = None
         self.size = 0
         self.depth = 0
+        self.depthLimit = 1
 
     def __len__(self):
         return self.size
@@ -29,14 +30,35 @@ class SearchTree:
     def length(self):
         return self.size
 
-    def insert(self, node, currentState):
-        if self.top == None:
+    ##
+    # Insert
+    # Method to insert and new node to a parent's subnode list.
+    #
+    # Input:
+    #   - parent - Inserted node's parent
+    #   - node - Node to be inserted
+    #   - currentState - Current state of board.
+    def insert(self, parent, node, currentState):
+        if self.top is None:
             self.top = node
+        else:
+            if not parent.subnodes.contains(node):
+                parent.subnodes.append(node)
+                self.size += 1
 
+    # Not implemented
     def remove(self, node, currentState):
         if self.top == None:
             pass
 
+    # Not implemented
     def find(self, node, currentState):
         if self.top == None:
-            pass
+            return None
+        else:
+            for n in node.subNodes:
+                if n is node:
+                    return n
+                else:
+                    self.find(self, node, currentState)
+        return None  # Meaning node not in tree

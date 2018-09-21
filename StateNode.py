@@ -14,13 +14,14 @@ class StateNode:
         ]}
     ]
 
-    def __init__(self, state, previousState, score, move, parent=None, subNode=None):
+    def __init__(self, state, previousState, score, move, depth, parent=None, subNode=None):
         self.nextState = state  # the state that would be reached by taking that move
         self.previousState = previousState
         self.move = move  # the Move that would be taken in the given state from the parent node
         self.score = score  # an evaluation of this state
         self.parentNode = parent
         self.subNodes = subNode
+        self.depth = depth
 
     def HasSubNode(self):
         print("Has Sub Node: " + str((len(self.subNodes) <= 0)))
