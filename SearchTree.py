@@ -38,7 +38,7 @@ class SearchTree:
     #   - parent - Inserted node's parent
     #   - node - Node to be inserted
     #   - currentState - Current state of board.
-    def insert(self, parent, node, currentState):
+    def insert(self, parent, node):
         if self.top is None:
             self.top = node
         else:
@@ -51,8 +51,7 @@ class SearchTree:
         if self.top == None:
             pass
 
-    # Not implemented
-    def find(self, node, currentState):
+    def find(self, node, GameState):
         if self.top == None:
             return None
         else:
@@ -60,5 +59,5 @@ class SearchTree:
                 if n is node:
                     return n
                 else:
-                    self.find(self, node, currentState)
+                    self.find(self, node, GameState)
         return None  # Meaning node not in tree

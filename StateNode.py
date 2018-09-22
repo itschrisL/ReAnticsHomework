@@ -20,6 +20,7 @@ class StateNode:
         self.move = move  # the Move that would be taken in the given state from the parent node
         self.score = score  # an evaluation of this state
         self.parentNode = parent
+        self.subNodes = []
         self.subNodes = subNode
         self.depth = depth
 
@@ -44,3 +45,7 @@ class StateNode:
         self.subNodes = subNode
         for node in subNode:
             node.parent = self
+
+    def AddSubnode(self, node):
+        nodes = self.subNodes
+        nodes.append(node)
