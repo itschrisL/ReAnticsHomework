@@ -1,5 +1,6 @@
 import random
 import sys
+import time
 
 sys.path.append("..")  # so other modules can be found in parent dir
 from Player import *
@@ -35,6 +36,8 @@ class AIPlayer(Player):
         super(AIPlayer, self).__init__(inputPlayerId, "Better Random")
         self.searchTree = SearchTree()
         self.searchTree.depthLimit = 2
+        self.myTunnel = None
+        self.myFood = None
 
     ##
     # getPlacement
@@ -100,6 +103,25 @@ class AIPlayer(Player):
     # Return: The Move to be made
     ##
     def getMove(self, currentState):
+        myInv = getCurrPlayerInventory(currentState)
+        # if the queen is on the anthill move her
+        myQueen = myInv.getQueen()
+        '''
+        if myQueen.coords == myInv.getAnthill().coords:
+            moveCords = myInv.getQueen().coords
+            x = moveCords[0]
+            y = moveCords[1]
+            if legalCoord((x + 1, y)):
+                return Move(MOVE_ANT, [myInv.getQueen().coords, (x + 1, y)], None)
+            if legalCoord((x - 1, y)):
+                return Move(MOVE_ANT, [myInv.getQueen().coords, (x - 1, y)], None)
+            if legalCoord((x, y + 1)):
+                return Move(MOVE_ANT, [myInv.getQueen().coords, (x, y + 1)], None)
+            if legalCoord((x, y - 1)):
+                return Move(MOVE_ANT, [myInv.getQueen().coords, (x, y - 1)], None)
+        '''
+
+
         self.searchTree.top = StateNode(currentState, None, None, None, 0)
         self.searchTree.top.subNodes = self.RecursiveFindMove(currentState, 0)
         bestScore = 0
@@ -108,7 +130,7 @@ class AIPlayer(Player):
             if node.score > bestScore:
                 bestNode = node
                 bestScore = node.score
-
+        print(time.clock())
         return bestNode.move
 
 
@@ -142,20 +164,23 @@ class AIPlayer(Player):
             currentDepth += 1
 
             node = StateNode(GameState, None, 0, None, currentDepth, None, None)
+            currentScore = self.calculateStateScore(GameState)
 
             moves = listAllLegalMoves(GameState)  # List of all legal moves from that state
-
+            print("Number of New Nodes : " + str(len(moves)))
             for move in moves:
                 states.append(getNextState(GameState, move))
 
             for i in range(0, len(states)):
                 evalScore = self.calculateStateScore(states[i])
-                newNode = StateNode(states[i], GameState, evalScore, moves[i], currentDepth, node, None)
-                nodesToCalculate = self.RecursiveFindMove(states[i], currentDepth)
-                if nodesToCalculate is not None:
-                    newNode.subNodes = nodesToCalculate
-                    node.score = self.evaluateNodeList(nodesToCalculate)
-                nodes.append(newNode)
+                if evalScore > 0:
+                    newNode = StateNode(states[i], GameState, evalScore, moves[i], currentDepth, node, None)
+                    nodesToCalculate = self.RecursiveFindMove(states[i], currentDepth)
+                    if nodesToCalculate is not None:
+                        newNode.subNodes = nodesToCalculate
+                        node.score = self.evaluateNodeList(nodesToCalculate)
+                    nodes.append(newNode)
+                #print(time.clock())
             return nodes
         else:
             return None
@@ -166,24 +191,29 @@ class AIPlayer(Player):
     #
     def evaluateNodeList(self, nodes):
         if nodes is not None:
-            sum = 0
-            for node in nodes:
-                if node is not None:
-                    sum += node.score
-            average = sum/(len(nodes))
-            return average
+            if len(nodes) > 0:
+                sum = 0
+                for node in nodes:
+                    if node is not None:
+                        sum += node.score
+                average = sum/(len(nodes))
+                return average
+            else:
+                return 0
         else:
             return 0  # meaning no nodes in list
 
     def calculateStateScore(self, currentState):
-        rtrnNumber = \
-            self.hasPlaerWon(currentState) + \
-            self.numOfAnts(currentState) + \
-            self.numOfFood(currentState) + \
-            self.myQueeenThreat(currentState) + \
-            self.enemyQueenThreat(currentState) + \
-            self.workerAnts(currentState)
-        print(rtrnNumber)
+        rtrnNumber = self.workerAnts(currentState) + self.numOfFood(currentState) + self.numOfAnts(currentState) + \
+                     self.hasPlaerWon(currentState) + self.DroneAttack(currentState)
+        #rtrnNumber = \
+        #    self.hasPlaerWon(currentState) + \
+        #    self.numOfAnts(currentState) + \
+        #    self.numOfFood(currentState) + \
+        #   self.myQueeenThreat(currentState) + \
+        #    self.enemyQueenThreat(currentState) + \
+        #    self.workerAnts(currentState)
+        #print(rtrnNumber)
         return rtrnNumber
 
     ##
@@ -210,7 +240,7 @@ class AIPlayer(Player):
             rtrnNumber = 0
         else:
             rtrnNumber = -0.5 / approxDist(closestAnt.coords, queenCords)
-        print("Queen Threat: " + str(rtrnNumber))
+        #print("Queen Threat: " + str(rtrnNumber))
         return rtrnNumber
 
     ##
@@ -237,7 +267,7 @@ class AIPlayer(Player):
         else:
             rtrnNumber = 0.00
 
-        print("Enemy Queen Threat: " + str(rtrnNumber))
+        #print("Enemy Queen Threat: " + str(rtrnNumber))
         return rtrnNumber
 
     def hasPlaerWon(self, currentState):
@@ -248,6 +278,32 @@ class AIPlayer(Player):
         elif getWinner(currentState) == 0:
             return -1.0
 
+    def DroneAttack(self, currentState):
+        myInv = currentState.inventories[currentState.whoseTurn]
+        myDrones = getAntList(currentState, currentState.whoseTurn, (DRONE,))
+        if len(myDrones) > 0:
+            enemyInv = getEnemyInv(self, currentState)
+            #enemyAnts = enemyInv.ants
+            enemyAnts = getAntList(currentState, 1 - currentState.whoseTurn, (WORKER,))
+            if len(enemyAnts) > 0:
+                workerAnt = enemyAnts[0]
+                for ant in enemyAnts:
+                    if ant is WORKER:
+                        workerAnt = ant
+                rtrnNumber = 0
+                dist = 100
+                bestDistance = 10000
+                for drone in myDrones:
+                    dist = approxDist(drone.coords, workerAnt.coords)
+                    if dist < bestDistance:
+                        bestDistance = dist
+                if bestDistance is 0:
+                    rtrnNumber += 0.06
+                else:
+                    rtrnNumber += 0.05 / bestDistance
+                return rtrnNumber
+        return 0
+
     def numOfAnts(self, currentState):
         myInv = currentState.inventories[self.playerId]
         myAnts = myInv.ants
@@ -255,9 +311,12 @@ class AIPlayer(Player):
         enemyInv = getEnemyInv(self, currentState)
         enemyAnts = enemyInv.ants
 
-        difference = len(myAnts) - len(enemyAnts)
-        rtrnNumber = difference * 0.05
-        print("Number of Ants: " + str(rtrnNumber))
+        drones = getAntList(currentState, currentState.whoseTurn, (DRONE,))
+        if len(drones) > 0:
+            rtrnNumber = 0.2
+        else:
+            rtrnNumber = 0
+        #print("Number of Ants: " + str(rtrnNumber))
         return rtrnNumber
 
     ##
@@ -266,27 +325,49 @@ class AIPlayer(Player):
     # Calculates the amount of food that the human has
     def numOfFood(self, currentState):
         enemyFood = getEnemyInv(self, currentState).foodCount
-        myFood = len(getCurrPlayerFood(self, currentState))
+        myInv = currentState.inventories[currentState.whoseTurn]
 
-        difference = (myFood - enemyFood)
-        rtrnNumber = difference * 0.05
-        print("Food Count: " + str(rtrnNumber))
+        rtrnNumber = myInv.foodCount * 0.05
+        #print("Food Count: " + str(rtrnNumber))
         return rtrnNumber
 
     def workerAnts(self, currentState):
         me = currentState.whoseTurn
         foods = getConstrList(currentState, None, (FOOD,))
-        myFood = foods[0]
-        myTunnel = getConstrList(currentState, me, (TUNNEL,))[0]
+
+        if self.myTunnel is None:
+            self.myTunnel = getConstrList(currentState, me, (TUNNEL,))[0]
+        if (self.myFood == None):
+            clossest = 1000
+            for food in foods:
+                dist = stepsToReach(currentState, self.myTunnel.coords, food.coords)
+                if (dist < clossest):
+                    self.myFood = food
+                    clossest = dist
+        myFood = self.myFood
+        myTunnel = self.myTunnel
         myWorkers = getAntList(currentState, me, (WORKER,))
         rtrnNumber = 0
         dist = 0
         if len(myWorkers) is not 0:
             for worker in myWorkers:
+
                 if worker.carrying:
-                    dist += approxDist(worker.coords, myTunnel.coords)
+                    if worker.coords == myTunnel.coords:
+                        #dist = 0
+                        print("")
+                    else:
+                        dist = approxDist(worker.coords, myTunnel.coords)
                 else:
-                    dist += approxDist(worker.coords, myFood.coords)
-                rtrnNumber += 0.05/dist
-        print("Worker Ants: " + str(rtrnNumber))
+                    if worker.coords == myFood.coords:
+                        #dist = 0
+                        print("")
+                    else:
+                        dist = approxDist(worker.coords, myFood.coords)
+
+                if dist is 0:
+                    rtrnNumber += 0.06
+                else:
+                    rtrnNumber += 0.05/dist
+        #print("Worker Ants: " + str(rtrnNumber))
         return rtrnNumber
