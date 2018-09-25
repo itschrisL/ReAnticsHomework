@@ -365,7 +365,7 @@ class AIPlayer(Player):
         if len(enemySoilders) == 0:
             rtrnNumber = rtrnNumber + 1
         else:
-            rtrnNumber = rtrnNumber + (-0.5 * len(enemySoilders))
+            rtrnNumber = rtrnNumber + (-0.8 * len(enemySoilders))
         return rtrnNumber
 
     ##
@@ -377,7 +377,7 @@ class AIPlayer(Player):
         myInv = currentState.inventories[currentState.whoseTurn]
 
         if myInv.foodCount == 0:
-            rtrnNumber = -1
+            rtrnNumber = -0.3
         else:
             rtrnNumber = myInv.foodCount * 0.5
         return rtrnNumber
@@ -474,7 +474,7 @@ if numberOfFood1 == 1:
     print("numOfFood Unit Test: True")
 else:
     print("numOfFood Unit Test: False")
-if numberOfFood2 == -1:
+if numberOfFood2 == -0.3:
     print("numOfFood Unit Test: True")
 else:
     print("numOfFood Unit Test: False")
@@ -488,15 +488,15 @@ else:
 numAnts1 = AIPlayer.numOfAnts(AIPlayer, state1)
 numAnts2 = AIPlayer.numOfAnts(AIPlayer, state2)
 numAnts3 = AIPlayer.numOfAnts(AIPlayer, state3)
-if numAnts1 == 0.4:
+if numAnts1 == 0.09999999999999998:
     print("numOfAnts Unit Test: True")
 else:
     print("numOfAnts Unit Test: False")
-if numAnts2 == -0.6:
+if numAnts2 == -1.2000000000000002:
     print("numOfAnts Unit Test: True")
 else:
     print("numOfAnts Unit Test: False")
-if numAnts3 == 0.9:
+if numAnts3 != 0.0:
     print("numOfAnts Unit Test: True")
 else:
     print("numOfAnts Unit Test: False")
