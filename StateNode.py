@@ -1,19 +1,5 @@
 class StateNode:
 
-    stateNode = [
-        {"Data": [
-            "currentState",
-            "previousMove",  # Move that was taken to get to this state
-            "nextMove",  # Next best move
-            "nextState",  # State that will be reached from nextMove
-            "stateScore",
-        ]},
-        {"Nodes": [
-            "parentNode",
-            "subNodes",
-        ]}
-    ]
-
     def __init__(self, state, previousState, score, move, depth, parent=None, subNode=None):
         self.nextState = state  # the state that would be reached by taking that move
         self.previousState = previousState
