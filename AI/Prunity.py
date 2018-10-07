@@ -227,31 +227,54 @@ class AIPlayer(Player):
         bestNode = StateNode(currentState, None, None, None, None)
         return bestNode
 
+    ##
+    #
+    #
+    def BestMaxNode(self, nodes):
+        if nodes is not None:
+            if len(nodes) > 0:
+                best = -100
+                for node in nodes:
+                    if node.score != None:
+                        if node.score > best:
+                            best = node.score
+                return best
+            else:
+                return 0
+
+        return 0
+
+    ##
+    # Best node for Min
+    #
+    def BestMinNode(self, nodes):
+        if nodes is not None:
+            if len(nodes) > 0:
+                best = 100
+                for node in nodes:
+                    if node.score != None:
+                        if node.score < best:
+                            best = node.score
+                return best
+            else:
+                return 0
+
+        return 0
+
     # Finds the best Node in the List of Nodes
     # Based on score
     def BestNodeInList(self, nodes):
         if nodes is not None:
             if len(nodes) > 0:
-                test = nodes.__ge__(0)
-                # Find best score based on who's turn it is
-                # Positive score
-                if 1 == 1:
-                    best = -100
-                    for node in nodes:
-                        if node.score != None:
-                            if node.score > best:
-                                best = node.score
-                    return best
-                # Negative Score
-                else:
-                    best = 100
-                    for node in nodes:
-                        if node.score != None:
-                            if node.score < best:
-                                best = node.score
-                    return best
+                best = -100
+                for node in nodes:
+                    if node.score != None:
+                        if node.score > best:
+                            best = node.score
+                return best
             else:
                 return 0
+
         return 0
 
     # Method to call to evaluate a GameState

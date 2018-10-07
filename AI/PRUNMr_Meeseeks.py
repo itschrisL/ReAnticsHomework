@@ -31,9 +31,10 @@ class AIPlayer(Player):
     ##
     def __init__(self, inputPlayerId):
         super(AIPlayer,self).__init__(inputPlayerId, "Mr. Meeseeks")
-        self.depthLimit = 1
+        self.depthLimit = 2
         self.food = []
         self.homes = []
+        self.playerIndex = None
 
     ##
     #getPlacement
@@ -99,6 +100,9 @@ class AIPlayer(Player):
     #Return: The Move to be made
     ##
     def getMove(self, currentState):
+        # set global variable playerIndex
+        if self.playerIndex == None:
+            self.playerIndex = currentState.whoseTurn
         cpyState = currentState.fastclone()
         self.foods = getConstrList(currentState,None,(FOOD,))
         self.homes = getConstrList(currentState,currentState.whoseTurn,(ANTHILL, TUNNEL,))
@@ -123,31 +127,34 @@ class AIPlayer(Player):
     def startBestMoveSearch(self,state,me):
         moves = []
         currScore = self.scoreState(state,me)
-        moves.extend(listAllMovementMoves(state))
-        moves.extend(listAllBuildMoves(state))
+        moves = listAllLegalMoves(state)
+        thisNode = {"move": None, "state": state, "score": self.scoreState(state, me), "parentNode": None}
         nextStates = []
         for move in moves:
-            nextStates.append(getNextState(state,move))
+            nextStates.append(getNextStateAdversarial(state,move))
         nextNodes = []
         for i in range(0,len(moves)):
-            nextNodes.append( self.getBestMove(moves[i],nextStates[i],1,me) )
+            nextNodes.append( self.getBestMove(moves[i],nextStates[i],1,me,thisNode) )
         selectMove = Move(END,None,None)
         for node in nextNodes:
             if node["score"] >= currScore:
                 selectMove = node["move"]
                 currScore = node["score"]
+        if selectMove == Move(END,None,None):
+            print("End Turn")
         return selectMove
 
 
-    def getBestMove(self,move,state,depth,me):
-        thisNode = {"move": move, "state": state, "score": self.scoreState(state,me)}
+    def getBestMove(self,move,state,depth,me,parent):
+        thisNode = {"move": move, "state": state, "score": self.scoreState(state,me), "parentNode": parent}
         moves = []
-        moves.extend(listAllMovementMoves(state))
-        moves.extend(listAllBuildMoves(state))
+        moves = listAllLegalMoves(state)
         if len(moves) == 0: return thisNode
+        #if thisNode["state"].whoseTurn != self.playerIndex:
+            #print("not my turn")
         nextStates = []
         for move in moves:
-            nextStates.append(getNextState(state,move))
+            nextStates.append(getNextStateAdversarial(state,move))
         if (depth == self.depthLimit):
             scores = []
             for state in nextStates:
@@ -156,7 +163,7 @@ class AIPlayer(Player):
         else:
             nextNodes = []
             for i in range(0,len(moves)):
-                nextNodes.append( self.getBestMove(moves[i],nextStates[i],depth+1,me) )
+                nextNodes.append( self.getBestMove(moves[i],nextStates[i],depth+1,me,thisNode))
 
             nodeListScore = self.scoreNodeList(nextNodes,me)
             if thisNode["score"] <= nodeListScore:
@@ -168,6 +175,13 @@ class AIPlayer(Player):
         for node in nodes:
             scores.append(node["score"])
         return max(scores)
+
+    def scoreNodeListMin(self, nodes):
+        scores = []
+        for node in nodes:
+            scores.append(node["score"])
+        return min(scores)
+
     ##
     #scoreState
     #Description: scores the advantage of the current state form 1.0 to -1.0,
@@ -197,7 +211,6 @@ class AIPlayer(Player):
                     score = score + .01/(1.0+minSteps)
 
         return score
-
 
     ##
     #registerWin

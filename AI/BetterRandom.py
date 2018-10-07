@@ -147,6 +147,7 @@ class AIPlayer(Player):
         # method template, not implemented
         pass
 
+    ##
     # Recursive search method to find best move
     # if the currentDepth is greater then the depthLimit return None
     #
@@ -174,6 +175,7 @@ class AIPlayer(Player):
         else:
             return None
 
+    #
     # Evaluates a list of nodes and
     #
     def evaluateNodeList(self, nodes):
@@ -206,8 +208,10 @@ class AIPlayer(Player):
 
         return 0
 
+    #
     # Method to call to evaluate a GameState
     # Calls helper methods to help it with this task
+    #
     def calculateStateScore(self, currentState):
         rtrnNumber = self.hasPlaerWon(currentState)
         if rtrnNumber == 10:
