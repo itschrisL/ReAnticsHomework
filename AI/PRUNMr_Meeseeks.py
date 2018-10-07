@@ -31,7 +31,7 @@ class AIPlayer(Player):
     ##
     def __init__(self, inputPlayerId):
         super(AIPlayer,self).__init__(inputPlayerId, "Mr. Meeseeks")
-        self.depthLimit = 2
+        self.depthLimit = 3
         self.food = []
         self.homes = []
         self.playerIndex = None
@@ -124,6 +124,15 @@ class AIPlayer(Player):
         #Attack a random enemy.
         return enemyLocations[random.randint(0, len(enemyLocations) - 1)]
 
+    ##
+    # startBestMoveSearch
+    # Description: Finds the best move by looking at a search tree
+    # and selecting the best node witch contains the a move
+    #
+    # Parameters:
+    #   state - A clone of the current state (GameState)
+    #   me - reference to who's turn it is
+    ##
     def startBestMoveSearch(self,state,me):
         moves = []
         currScore = self.scoreState(state,me)
@@ -133,44 +142,94 @@ class AIPlayer(Player):
         for move in moves:
             nextStates.append(self.getNextStateAdversarial(state,move))
         nextNodes = []
+        alpha = float("-inf")
+        beta = float("inf")
         for i in range(0,len(moves)):
-            nextNodes.append( self.getBestMove(moves[i],nextStates[i],1,me,thisNode) )
+            nextNodes.append( self.getBestMove(moves[i],nextStates[i],1,me,thisNode,alpha,beta))
         selectMove = Move(END,None,None)
         for node in nextNodes:
             if node["score"] >= currScore:
                 selectMove = node["move"]
                 currScore = node["score"]
-        if selectMove == Move(END,None,None):
-            print("End Turn")
+        #if selectMove.moveType == END:
+        #    print("End Turn")
         return selectMove
 
-
-    def getBestMove(self,move,state,depth,me,parent):
+    ##
+    # getBestMove
+    # Description: Finds the best move by looking at a search tree
+    # and selecting the best node witch contains the a move
+    #
+    # Parameters:
+    #   move - a move from a list of legal moves
+    #   state - A clone of the current state (GameState)
+    #   depth - the current depth of the tree
+    #   me - reference to who's turn it is
+    #   parent - reference to parent node
+    ##
+    def getBestMove(self,move,state,depth,me,parent, alpha, beta):
         thisNode = {"move": move, "state": state, "score": self.scoreState(state,me), "parentNode": parent}
         moves = []
         moves = listAllLegalMoves(state)
         if len(moves) == 0: return thisNode
-        #if thisNode["state"].whoseTurn != self.playerIndex:
-            #print("not my turn")
         nextStates = []
         for move in moves:
             nextStates.append(self.getNextStateAdversarial(state,move))
-        if (depth == self.depthLimit):
+        if depth == self.depthLimit:
             scores = []
-            for state in nextStates:
-                scores.append(self.scoreState(state,me))
-            thisNode["score"] = max(scores)
+            for s in nextStates:
+                scores.append(self.scoreState(s,me))
+            if thisNode["state"].whoseTurn == self.playerIndex:
+                thisNode["score"] = max(scores)
+            else:
+                thisNode["score"] = min(scores)
         else:
             nextNodes = []
             for i in range(0,len(moves)):
-                nextNodes.append( self.getBestMove(moves[i],nextStates[i],depth+1,me,thisNode))
-
-            nodeListScore = self.scoreNodeList(nextNodes,me)
-            if thisNode["score"] <= nodeListScore:
-                thisNode["score"] = nodeListScore
+                nextNodes.append( self.getBestMove(moves[i],nextStates[i],depth+1,me,thisNode,alpha, beta))
+            if thisNode["state"].whoseTurn == self.playerIndex:
+                nodeListScore = self.scoreNodeList(nextNodes)
+                if thisNode["score"] <= nodeListScore:
+                    thisNode["score"] = nodeListScore
+            else:
+                nodeListScore = self.scoreNodeListMin(nextNodes)
+                if thisNode["score"] >= nodeListScore:
+                    thisNode["score"] = nodeListScore
         return thisNode
 
-    def scoreNodeList(self, nodes, me):
+    def TestMethod(self,move,state,depth,me,parent, alpha, beta):
+        thisNode = {"move": move, "state": state, "score": self.scoreState(state, me), "parentNode": parent}
+        moves = []
+        nextStates = []
+        if depth == self.depthLimit:
+            return thisNode
+        else:
+            moves = listAllLegalMoves(state)
+            if len(moves) == 0:
+                print("Length of moves 0")
+                return thisNode
+            for move in moves:
+                nextStates.append(self.getNextStateAdversarial(state, move))
+            if thisNode["state"].whoseTurn == self.playerIndex:
+                best = -1000
+                for i in range(0, len(moves)):
+                    nextNode = self.TestMethod(moves[i], nextStates[i], depth + 1, me, thisNode, alpha, beta)
+                    best = max(best, nextNode["score"])
+                    alpha = max(alpha, best)
+                    if beta <= alpha:
+                        break
+                return thisNode
+            else:
+                worst = 1000
+                for i in range(0, len(moves)):
+                    nextNode = self.TestMethod(moves[i], nextStates[i], depth + 1, me, thisNode, alpha, beta)
+                    worst = min(worst, nextNode["score"])
+                    beta = min(beta, worst)
+                    if beta <= alpha:
+                        break
+                return thisNode
+
+    def scoreNodeList(self, nodes):
         scores = []
         for node in nodes:
             scores.append(node["score"])
