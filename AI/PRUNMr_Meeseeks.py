@@ -145,7 +145,7 @@ class AIPlayer(Player):
         alpha = float("-inf")
         beta = float("inf")
         for i in range(0,len(moves)):
-            nextNodes.append( self.getBestMove(moves[i],nextStates[i],1,me,thisNode,alpha,beta))
+            nextNodes.append( self.TestMethod(moves[i],nextStates[i],1,me,thisNode,alpha,beta))
         selectMove = Move(END,None,None)
         for node in nextNodes:
             if node["score"] >= currScore:
@@ -198,43 +198,48 @@ class AIPlayer(Player):
         return thisNode
 
     def TestMethod(self,move,state,depth,me,parent, alpha, beta):
+        #Create a new node
         thisNode = {"move": move, "state": state, "score": self.scoreState(state, me), "parentNode": parent}
-        moves = []
-        nextStates = []
+        # If depth limit reach, then just return this node
         if depth == self.depthLimit:
             return thisNode
         else:
-            moves = listAllLegalMoves(state)
-            if len(moves) == 0:
-                print("Length of moves 0")
-                return thisNode
-            for move in moves:
-                nextStates.append(self.getNextStateAdversarial(state, move))
+            moves = listAllLegalMoves(state)  # Get all legal moves
+            if len(moves) == 0: return thisNode  # This should never happen
+            # Min max evaluations
+            # If this AI's turn, then it is a max evaluation
+            # Otherwise it is a min evaluation.
+            # Using alpha beta, if beta <= alpha then don't look at any more branches.
             if thisNode["state"].whoseTurn == self.playerIndex:
                 best = -1000
                 for i in range(0, len(moves)):
-                    nextNode = self.TestMethod(moves[i], nextStates[i], depth + 1, me, thisNode, alpha, beta)
+                    nextState = self.getNextStateAdversarial(state, moves[i])
+                    nextNode = self.TestMethod(moves[i], nextState, depth + 1, me, thisNode, alpha, beta)
                     best = max(best, nextNode["score"])
                     alpha = max(alpha, best)
-                    if beta <= alpha:
+                    if beta <= alpha:  # No need to look at other branches
                         break
                 return thisNode
+            # Min Evaluations
             else:
                 worst = 1000
                 for i in range(0, len(moves)):
-                    nextNode = self.TestMethod(moves[i], nextStates[i], depth + 1, me, thisNode, alpha, beta)
+                    nextState = self.getNextStateAdversarial(state, moves[i])
+                    nextNode = self.TestMethod(moves[i], nextState, depth + 1, me, thisNode, alpha, beta)
                     worst = min(worst, nextNode["score"])
                     beta = min(beta, worst)
-                    if beta <= alpha:
+                    if beta <= alpha:  # No need to look at other branches
                         break
                 return thisNode
 
+    # TODO delete Later
     def scoreNodeList(self, nodes):
         scores = []
         for node in nodes:
             scores.append(node["score"])
         return max(scores)
 
+    # TODO delete later
     def scoreNodeListMin(self, nodes):
         scores = []
         for node in nodes:
@@ -317,7 +322,7 @@ class AIPlayer(Player):
             nextState.whoseTurn = 1 - currentState.whoseTurn
         return nextState
 
-
+# TODO possible add more unit test methods
 def testMeeseek():
     gameState = GameState.getBasicState()
     gameState.inventories[0].foodCount = 11
