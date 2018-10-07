@@ -131,7 +131,7 @@ class AIPlayer(Player):
         thisNode = {"move": None, "state": state, "score": self.scoreState(state, me), "parentNode": None}
         nextStates = []
         for move in moves:
-            nextStates.append(getNextStateAdversarial(state,move))
+            nextStates.append(self.getNextStateAdversarial(state,move))
         nextNodes = []
         for i in range(0,len(moves)):
             nextNodes.append( self.getBestMove(moves[i],nextStates[i],1,me,thisNode) )
@@ -154,7 +154,7 @@ class AIPlayer(Player):
             #print("not my turn")
         nextStates = []
         for move in moves:
-            nextStates.append(getNextStateAdversarial(state,move))
+            nextStates.append(self.getNextStateAdversarial(state,move))
         if (depth == self.depthLimit):
             scores = []
             for state in nextStates:
@@ -220,6 +220,44 @@ class AIPlayer(Player):
     def registerWin(self, hasWon):
         #method templaste, not implemented
         pass
+
+    ##
+    # This is an updated method that was written by Jacob Apenes and sent to everyone by Nuxoll
+    # We put this in our agent's class to make sure that the updated version is used instead of the one in the
+    # AIPlayerUtils class.
+    #
+    # Thank You Jacob!!!!!
+    #
+    # getNextStateAdversarial
+    #
+    # Description: This is the same as getNextState (above) except that it properly
+    # updates the hasMoved property on ants and the END move is processed correctly.
+    #
+    # Parameters:
+    #   currentState - A clone of the current state (GameState)
+    #   move - The move that the agent would take (Move)
+    #
+    # Return: A clone of what the state would look like if the move was made
+    ##
+    def getNextStateAdversarial(self, currentState, move):
+        # variables I will need
+        nextState = getNextState(currentState, move)
+        myInv = getCurrPlayerInventory(nextState)
+        myAnts = myInv.ants
+
+        # If an ant is moved update their coordinates and has moved
+        if move.moveType == MOVE_ANT:
+            # startingCoord = move.coordList[0]
+            startingCoord = move.coordList[len(move.coordList) - 1]
+            for ant in myAnts:
+                if ant.coords == startingCoord:
+                    ant.hasMoved = True
+        elif move.moveType == END:
+            for ant in myAnts:
+                ant.hasMoved = False
+            nextState.whoseTurn = 1 - currentState.whoseTurn
+        return nextState
+
 
 def testMeeseek():
     gameState = GameState.getBasicState()
