@@ -32,10 +32,11 @@ class AIPlayer(Player):
     ##
     def __init__(self, inputPlayerId):
         super(AIPlayer, self).__init__(inputPlayerId, "Mr. Meeseeks")
-        self.depthLimit = 3
+        self.depthLimit = 2
         self.foods = []
         self.homes = []
         self.playerIndex = None
+        self.enemyHomes = []
 
     ##
     # getPlacement
@@ -101,11 +102,12 @@ class AIPlayer(Player):
     ##
     def getMove(self, currentState):
         # set global variable playerIndex
-        if self.playerIndex is None:
-            self.playerIndex = currentState.whoseTurn
         cpy_state = currentState.fastclone()
+        if self.playerIndex is None:
+            self.playerIndex = cpy_state.whoseTurn
         self.foods = getConstrList(currentState, None, (FOOD,))
         self.homes = getConstrList(currentState, currentState.whoseTurn, (ANTHILL, TUNNEL,))
+        self.enemyHomes = getConstrList(currentState, 1- currentState.whoseTurn, (ANTHILL, TUNNEL,))
 
         move = self.startBestMoveSearch(cpy_state, cpy_state.whoseTurn)
 
@@ -137,15 +139,14 @@ class AIPlayer(Player):
         moves = []
         currScore = self.scoreState(state, me)
         moves = listAllLegalMoves(state)
-        thisNode = {"move": None, "state": state, "score": self.scoreState(state, me), "parentNode": None}
+        thisNode = {"move": None, "state": state, "score": self.scoreState(state, me), "parentNode": None,\
+                     "alpha": float("-inf"), "beta": float("inf")}
         nextStates = []
         for move in moves:
             nextStates.append(self.getNextStateAdversarial(state, move))
         nextNodes = []
-        alpha = float("-inf")
-        beta = float("inf")
         for i in range(0, len(moves)):
-            nextNodes.append(self.TestMethod(moves[i], nextStates[i], 1, me, thisNode, alpha, beta))
+            nextNodes.append(self.TestMethod(moves[i], nextStates[i], 1, me, thisNode, thisNode["alpha"], thisNode["beta"]))
         selectMove = Move(END, None, None)
         for node in nextNodes:
             if node["score"] >= currScore:
@@ -153,6 +154,7 @@ class AIPlayer(Player):
                 currScore = node["score"]
         # if selectMove.moveType == END:
         #    print("End Turn")
+        #print(currScore)
         return selectMove
 
     ##
@@ -167,7 +169,7 @@ class AIPlayer(Player):
     #   me - reference to who's turn it is
     #   parent - reference to parent node
     ##
-    def getBestMove(self, move, state, depth, me, parent, alpha, beta):
+    def getBestMove(self, move, state, depth, me, parent):
         thisNode = {"move": move, "state": state, "score": self.scoreState(state, me), "parentNode": parent}
         moves = []
         moves = listAllLegalMoves(state)
@@ -200,38 +202,49 @@ class AIPlayer(Player):
     # TODO change name of this function and delete getBestMove
     def TestMethod(self, move, state, depth, me, parent, alpha, beta):
         # Create a new node
-        this_node = {"move": move, "state": state, "score": self.scoreState(state, me), "parentNode": parent}
+        this_node = {"move": move, "state": state, "score": self.scoreState(state, me), "parentNode": parent,\
+                      "alpha": float("-inf"), "beta": float("inf")}
         # If depth limit reach, then just return this node
         if depth == self.depthLimit:
+            this_node["score"] = self.scoreState(state, me)
+            #this_node["alpha"] = self.scoreState(state, me)
+            #this_node["beta"] = self.scoreState(state, me)
+            
             return this_node
         else:
             moves = listAllLegalMoves(state)  # Get all legal moves
             if len(moves) == 0:
                 return this_node  # This should never happen
             # Min max evaluations
-            # If this AI's turn, then it is a max evaluation
-            # Otherwise it is a min evaluation.
+            # If this AI's turn, then it is a max evaluation (alpha)
+            # Otherwise it is a min evaluation (beta)
             # Using alpha beta, if beta <= alpha then don't look at any more branches.
+            alpha = parent["alpha"] #Bringing alpha down
+            beta = parent["beta"] #Bringing beta down
             if this_node["state"].whoseTurn == self.playerIndex:
-                best = -1000
+                this_node["beta"] = beta    # beta doesn't get updated later 
                 for i in range(0, len(moves)):
                     next_state = self.getNextStateAdversarial(state, moves[i])
                     next_node = self.TestMethod(moves[i], next_state, depth + 1, me, this_node, alpha, beta)
-                    best = max(best, next_node["score"])
-                    alpha = max(alpha, best)
+                    #best = max(best, next_node["score"])
+                    alpha = max(alpha, next_node["score"])
                     if beta <= alpha:  # No need to look at other branches
                         break
+                this_node["score"] = alpha
+                this_node["alpha"] = alpha
                 return this_node
             # Min Evaluations
             else:
-                worst = 1000
+                this_node["alpha"] = alpha  # alpha doesn't get updated later
                 for i in range(0, len(moves)):
                     next_state = self.getNextStateAdversarial(state, moves[i])
                     next_node = self.TestMethod(moves[i], next_state, depth + 1, me, this_node, alpha, beta)
-                    worst = min(worst, next_node["score"])
-                    beta = min(beta, worst)
+                    #worst = min(worst, next_node["score"])
+                    beta = min(beta, next_node["score"])
                     if beta <= alpha:  # No need to look at other branches
                         break
+                this_node["score"] = beta
+                this_node["beta"] = beta
                 return this_node
 
     # TODO delete Later
@@ -249,36 +262,85 @@ class AIPlayer(Player):
         return min(scores)
 
     ##
-    # scoreState
-    # Description: scores the advantage of the current state form 1.0 to -1.0,
-    # higher numbers advantaging the 'me' player
+    #scoreState
+    #Description: scores the advantage of the current state form 1.0 to -1.0,
+    #higher numbers advantaging the 'me' player
     #
-    # Parameters:
+    #Parameters:
     #   gameState - gameState to analyze
     ##
     def scoreState(self, gameState, me):
-        playerFoodGross = gameState.inventories[me].foodCount
-        playerFoodScaled = playerFoodGross / 11.0
-        score = playerFoodScaled
-        workers = getAntList(gameState, me, (WORKER,))
-
-        if score < 1.0:
-            if len(workers) < 2: score = score - .1
-            for worker in workers:
-                if worker.carrying:
-                    score = score + .01
-                    stepsToHomes = (
-                    approxDist(worker.coords, self.homes[0].coords), approxDist(worker.coords, self.homes[1].coords))
-                    minSteps = min(stepsToHomes)
-                    score = score + .01 / (1.0 + minSteps)
-                else:
-                    stepsToFoods = (
-                    approxDist(worker.coords, self.foods[0].coords), approxDist(worker.coords, self.foods[1].coords), \
-                    approxDist(worker.coords, self.foods[2].coords), approxDist(worker.coords, self.foods[3].coords))
-                    minSteps = min(stepsToFoods)
-                    score = score + .01 / (1.0 + minSteps)
-
-        return score
+        enemy = 1 - me
+        myInv = gameState.inventories[me]
+        enemyInv = gameState.inventories[enemy]
+        
+        
+        playerFoodGross = myInv.foodCount
+        playerFoodScaled = playerFoodGross/11.0
+        foodScore = playerFoodScaled
+        
+        if foodScore == 1.0:
+            return playerFoodGross
+        
+        enemyQueen = getAntList(gameState, enemy, (QUEEN,))
+        if len(enemyQueen) > 0:
+            healthScore = 1.0 - enemyQueen[0].health/10.0
+        else:
+            return 1.0
+        
+        capturehealthScore = 1.0 - self.enemyHomes[0].captureHealth/3.0
+        if capturehealthScore == 1.0:
+            return capturehealthScore
+        
+        workers = getAntList(gameState,me,(WORKER,))
+        fighters = getAntList(gameState, me, (R_SOLDIER,))
+        enemyDrones = getAntList(gameState, enemy,(DRONE,))
+        enemyWorkers = getAntList(gameState, enemy, (WORKER,))
+        
+        antScore = 0.0
+        #if score < 1.0:
+        if len(workers) < 2: 
+            antScore = antScore-.1
+        for worker in workers:
+            if worker.carrying:
+                antScore = antScore + .01
+                stepsToHomes = (approxDist(worker.coords,self.homes[0].coords),approxDist(worker.coords,self.homes[1].coords))
+                minSteps = min(stepsToHomes)
+                antScore = antScore + .01/(1.0+minSteps)
+            else:
+                stepsToFoods = (approxDist(worker.coords,self.foods[0].coords),approxDist(worker.coords,self.foods[1].coords),\
+                                approxDist(worker.coords,self.foods[2].coords),approxDist(worker.coords,self.foods[3].coords))
+                minSteps = min(stepsToFoods)
+                antScore = antScore + .01/(1.0+minSteps)
+                
+            for enemyDrone in enemyDrones:
+                antScore = antScore - 0.1
+                if approxDist(worker.coords,enemyDrone.coords) < 2:
+                    distanceToDeath = approxDist(worker.coords,enemyDrone.coords)
+                    antScore = antScore - .2/(1.0 +distanceToDeath)
+  
+  
+        # Only one range solider is created, it first goes and kills the worker AnT and then moves towards the Anthill to kill the Queen
+        for fighter in fighters:
+##############################################################################################
+            #This wasn't working for a long time, it's still not perfect, it comes to close to the queen.
+            if len(fighters) < 2:
+                antScore = antScore + .1 * fighter.health
+            if enemyWorkers is not None:
+                stepsToEnemyTunnel = approxDist(fighter.coords, self.enemyHomes[1].coords)
+                antScore = antScore + .1/(1.0 + stepsToEnemyTunnel)
+            elif enemyWorkers is None:
+                stepsToEnemyQueen = approxDist(fighter.coords, enemyQueen.coords)
+                if stepsToEnemyQueen > 3:
+                    antScore = antScore + .1/(1.0 + stepsToEnemyQueen)   
+                for enemyDrone in enemyDrones:
+                    if approxDist(fighter.coords, enemyDrone.coords) < 3:
+                        antScore = antScore - .2
+###############################################################################################33        
+        sumScore = foodScore + healthScore + capturehealthScore + antScore 
+        return sumScore/4.0
+    
+    
 
     ##
     # registerWin

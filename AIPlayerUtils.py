@@ -715,11 +715,10 @@ def getNextStateAdversarial(currentState, move):
     nextState = getNextState(currentState, move)
     myInv = getCurrPlayerInventory(nextState)
     myAnts = myInv.ants
-
+    
     # If an ant is moved update their coordinates and has moved
     if move.moveType == MOVE_ANT:
-        # startingCoord = move.coordList[0]
-        startingCoord = move.coordList[len(move.coordList) - 1]
+        startingCoord = move.coordList[0]
         for ant in myAnts:
             if ant.coords == startingCoord:
                 ant.hasMoved = True
